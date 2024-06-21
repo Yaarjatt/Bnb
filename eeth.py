@@ -5,11 +5,17 @@ import time
 from bip_utils import Bip39MnemonicGenerator, Bip39SeedGenerator, Bip44, Bip44Coins, Bip44Changes
 from eth_account import Account
 from eth_utils import to_checksum_address
+from itertools import cycle
 
-ALCHEMY_URL = "https://eth-mainnet.g.alchemy.com/v2/eVSWYz-Y7WaD05gKy3v7sgm2oHpCCwG1"
-CONCURRENT_TASKS = 200  # Increased concurrent tasks
-TELEGRAM_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
-TELEGRAM_CHAT_ID = "YOUR_TELEGRAM_CHAT_ID"
+ALCHEMY_URLS = [
+    "https://eth-mainnet.g.alchemy.com/v2/eVSWYz-Y7WaD05gKy3v7sgm2oHpCCwG1",
+    "https://eth-mainnet.g.alchemy.com/v2/S05vNQwbeVWhZNgPzcUibgJIcZ9gE1eo"  # Replace with your second URL
+]
+URL_CYCLE = cycle(ALCHEMY_URLS)
+
+CONCURRENT_TASKS = 200
+TELEGRAM_BOT_TOKEN = "6561282405:AAGp6z2CYLw6NnrwbZ8ntIX9bm07UOXtiB4"
+TELEGRAM_CHAT_ID = "1073690504"
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
 
 def generate_mnemonic():
@@ -26,6 +32,7 @@ def derive_eth_address(mnemonic):
     return to_checksum_address(address)
 
 async def check_balance(session, address):
+    url = next(URL_CYCLE)
     payload = {
         "jsonrpc": "2.0",
         "method": "eth_getBalance",
@@ -33,7 +40,7 @@ async def check_balance(session, address):
         "id": 1
     }
     try:
-        async with session.post(ALCHEMY_URL, json=payload, timeout=5) as response:
+        async with session.post(url, json=payload, timeout=5) as response:
             if response.status == 200:
                 result = await response.json()
                 balance = int(result['result'], 16)
@@ -66,6 +73,8 @@ async def process_address(session):
     
     balance = await check_balance(session, address)
     
+    print(f"Address: {address}, Balance: {balance} ETH")
+
     if balance > 0:
         message = f"Found address with balance!\nMnemonic: {mnemonic}\nAddress: {address}\nBalance: {balance} ETH"
         print(message)
